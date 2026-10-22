@@ -6,15 +6,18 @@
         .\push.ps1                       # 自动生成提交说明
         .\push.ps1 "day003: 合并区间"     # 自己指定说明
         .\push.ps1 -NoPush               # 只提交，不上传（本地存档）
+        .\push.ps1 -Force                # 跳过删除确认
 
-    它会做三件事：git add 全部改动 -> git commit -> git push
+    安全机制：如果检测到「删除文件」，会先列出来并要求你确认，
+    避免把误删的文件同步到 GitHub 上（这个坑真的踩过）。
 #>
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
     [string]$Message,
 
-    [switch]$NoPush
+    [switch]$NoPush,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,9 +71,28 @@ $changed = @($status.Out -split "`n" | Where-Object { $_.Trim() })
 Write-Host ("检测到 {0} 处改动：" -f $changed.Count) -ForegroundColor Cyan
 $changed | ForEach-Object { Write-Host ("  " + $_.Trim()) }
 
-# ---------- 2. 生成提交说明 ----------
+# ---------- 2. 删除确认（防止误删被同步上去）----------
+$deleted = Invoke-Git @('diff','--cached','--diff-filter=D','--name-only')
+if ($deleted.Out) {
+    $delFiles = @($deleted.Out -split "`n" | Where-Object { $_.Trim() })
+    Write-Host ''
+    Write-Host '⚠ 注意：这次有文件被删除，它们会从 GitHub 上一起消失：' -ForegroundColor Yellow
+    $delFiles | ForEach-Object { Write-Host ('    - ' + $_.Trim()) -ForegroundColor Yellow }
+    Write-Host '  改正方法：git restore <文件名>  可以把它恢复回来' -ForegroundColor DarkGray
+
+    if (-not $Force) {
+        $answer = ''
+        try { $answer = Read-Host '确实要删除并上传吗？输入 y 继续，直接回车取消' } catch { $answer = '' }
+        if ($answer -notmatch '^[yY]') {
+            Invoke-Git @('reset','-q') | Out-Null
+            Write-Host '已取消，没有提交任何内容（文件也没动）。' -ForegroundColor Green
+            exit 0
+        }
+    }
+}
+
+# ---------- 3. 生成提交说明 ----------
 if (-not $Message -or $Message.Trim() -eq '') {
-    # 从改动里找 dayNNN，优先用它当说明
     $dayHit = [regex]::Matches(($changed -join ' '), 'day(\d{3})') |
               ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Descending | Select-Object -First 1
     if ($dayHit) {
@@ -80,7 +102,7 @@ if (-not $Message -or $Message.Trim() -eq '') {
     }
 }
 
-# ---------- 3. 提交 ----------
+# ---------- 4. 提交 ----------
 $commit = Invoke-Git @('commit','-m',$Message)
 if ($commit.Code -ne 0) {
     Write-Host "提交失败：$($commit.Out)" -ForegroundColor Red
@@ -95,7 +117,7 @@ if ($NoPush) {
     exit 0
 }
 
-# ---------- 4. 上传 ----------
+# ---------- 5. 上传 ----------
 Write-Host '正在上传到 GitHub ...' -ForegroundColor Cyan
 $push = Invoke-Git @('-c','http.schannelCheckRevoke=false','push')
 if ($push.Code -ne 0) {
