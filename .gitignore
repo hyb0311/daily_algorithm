@@ -1,0 +1,50 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ---------- C / C++ ----------
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.dSYM/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+bin/
+obj/
+
+# ---------- IDE / 编辑器 ----------
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 个人临时文件 ----------
+notes/
+tmp/
+*.log
