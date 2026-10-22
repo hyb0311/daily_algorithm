@@ -48,3 +48,13 @@ desktop.ini
 notes/
 tmp/
 *.log
+
+
+# ---------- Java ----------
+*.class
+*.jar
+*.war
+target/
+out/
+.gradle/
+hs_err_pid*
